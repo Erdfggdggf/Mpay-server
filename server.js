@@ -44,104 +44,96 @@ function getNetworkInfo(countryCode) {
 
 // 1. DEPOSIT API ENDPOINT
 app.post('/deposit', async (req, res) => {
-      try {
-          const { phone_number, amount, country, network } = req.body;
-          
-          if (!phone_number || !amount || !country) {
-              return res.status(400).json({ success: false, message: 'Missing required fields' });
-          }
+    try {
+        const { phone_number, amount, country } = req.body;
+        
+        if (!phone_number || !amount || !country) {
+            return res.status(400).json({ success: false, message: 'Missing required fields' });
+        }
 
-          if (amount < 10) {
-              return res.status(400).json({ success: false, message: 'Minimum deposit is 10' });
-          }
+        if (amount < 10) {
+            return res.status(400).json({ success: false, message: 'Minimum deposit is 10' });
+        }
 
-          const reference = generateReference(country);
-          const networkInfo = getNetworkInfo(country);
-          const selectedNetwork = network || networkInfo.network;
-          const name = networkInfo.name;
-          
-          // Initialize payment state in memory
-          paymentStore.set(reference, {
-              status: 'PENDING',
-              reference,
-              phone_number,
-              amount,
-              country: name,
-              network: selectedNetwork,
-              date: new Date().toLocaleDateString(),
-              time: new Date().toLocaleTimeString(),
-              provider: 'M-Pay',
-              message: 'Waiting for payment approval'
-          });
+        const reference = generateReference(country);
+        const { network, name } = getNetworkInfo(country);
+        
+        // Initialize payment state in memory
+        paymentStore.set(reference, {
+            status: 'PENDING',
+            reference,
+            phone_number,
+            amount,
+            country: name,
+            network,
+            date: new Date().toLocaleDateString(),
+            time: new Date().toLocaleTimeString(),
+            provider: 'M-Pay',
+            message: 'Waiting for payment approval'
+        });
 
-          const callbackUrl = `https://mpay-server-xxts.onrender.com/callback`; 
+        const callbackUrl = `https://mpay-server-xxts.onrender.com/callback`; 
 
-          let response;
-          if (country === 'UG' || country === 'TZ' || country === 'ZM') {
-              // Use Global Payments API for Uganda, Tanzania, Zambia
-              response = await axios.post('https://app.mpayafrica.site/api/global-payments', {
-                  api_key: API_KEY,
-                  first_name: "Customer",
-                  last_name: "Deposit",
-                  email: "customer@example.com",
-                  phone: phone_number.startsWith('+') ? phone_number : `+${phone_number}`,
-                  amount: parseFloat(amount),
-                  country_code: country,
-                  network_code: selectedNetwork,
-                  reason: `Deposit via mpay ${country}`,
-                  ramp_type: "deposit",
-                  callback_url: callbackUrl,
-                  reference: reference
-              }, {
-                  headers: { 
-                      'Accept': 'application/json',
-                      'Content-Type': 'application/json'
-                  }
-              });
-          } else {
-              // Use M-Pesa Express for Kenya with form-data format
-              response = await axios.post(`${MPAY_API_BASE}/mpesa/express`, new URLSearchParams({
-                  api_key: API_KEY,
-                  amount: amount.toString(),
-                  phone_number: phone_number,
-                  user_reference: reference,
-                  payment_id: 'wallet',
-                  callback_url: callbackUrl
-              }), {
-                  headers: { 
-                      'Accept': 'application/json',
-                      'Content-Type': 'application/x-www-form-urlencoded'
-                  }
-              });
-          }
+        let response;
+        if (country === 'UG') {
+            // Use Global Payments API for Uganda as requested
+            response = await axios.post('https://app.mpayafrica.site/api/global-payments', {
+                api_key: API_KEY,
+                first_name: "Customer",
+                last_name: "Deposit",
+                email: "customer@example.com",
+                phone: phone_number.startsWith('+') ? phone_number : `+${phone_number}`,
+                amount: parseFloat(amount),
+                country_code: "UG",
+                network_code: "MOMO",
+                reason: "Deposit via mpay",
+                ramp_type: "deposit",
+                callback_url: callbackUrl,
+                reference: reference
+            }, {
+                headers: { 
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            });
+        } else {
+            // Use M-Pesa Express for other countries with form-data format
+            response = await axios.post(`${MPAY_API_BASE}/mpesa/express`, new URLSearchParams({
+                api_key: API_KEY,
+                amount: amount.toString(),
+                phone_number: phone_number,
+                user_reference: reference,
+                payment_id: 'wallet',
+                callback_url: callbackUrl
+            }), {
+                headers: { 
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
+            });
+        }
 
-          if (response.data && (response.data.message || response.data.success || response.data.status === 'success' || response.data.status === 'QUEUED')) {
-              res.json({
-                  success: true,
-                  message: 'Payment initiated successfully',
-                  reference: reference
-              });
-          } else {
-              paymentStore.set(reference, { ...paymentStore.get(reference), status: 'FAILED', message: 'Failed to initiate payment' });
-              res.status(400).json({ success: false, message: 'Failed to initiate payment', reference });
-          }
+        if (response.data && (response.data.message || response.data.success || response.data.status === 'success')) {
+            res.json({
+                success: true,
+                message: 'Payment initiated successfully',
+                reference: reference
+            });
+        } else {
+            paymentStore.set(reference, { ...paymentStore.get(reference), status: 'FAILED', message: 'Failed to initiate payment' });
+            res.status(400).json({ success: false, message: 'Failed to initiate payment', reference });
+        }
 
-      } catch (error) {
-          const errorDetails = error.response ? error.response.data : error.message;
-          console.error('Deposit Error:', errorDetails);
-          
-          let errorMessage = 'Internal Server Error';
-          if (error.response && error.response.data) {
-              errorMessage = typeof error.response.data === 'object' ? JSON.stringify(error.response.data) : error.response.data;
-          }
-
-          res.status(500).json({ 
-              success: false, 
-              message: errorMessage,
-              details: errorDetails
-          });
-      }
-  });
+    } catch (error) {
+        const errorDetails = error.response ? error.response.data : error.message;
+        console.error('Deposit Error:', errorDetails);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Internal Server Error',
+            details: errorDetails
+        });
+    }
+});
 
 // 2. CREATE CALLBACK ENDPOINT
 app.post('/callback', (req, res) => {
