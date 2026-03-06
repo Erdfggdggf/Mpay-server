@@ -35,7 +35,7 @@ function generateReference(countryCode) {
 function getNetworkInfo(countryCode) {
     switch (countryCode) {
         case 'KE': return { network: 'MPESA', name: 'Kenya' };
-        case 'TZ': return { network: 'AIRTEL', name: 'Tanzania' };
+        case 'TZ': return { network: 'AIRTELTZ', name: 'Tanzania' };
         case 'ZM': return { network: 'MTN', name: 'Zambia' };
         case 'UG': return { network: 'MOMO', name: 'Uganda' };
         default: return { network: 'UNKNOWN', name: 'Unknown' };
