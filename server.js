@@ -31,32 +31,38 @@ function generateReference(countryCode) {
     return `TX-${countryCode}-${randomNum}`;
 }
 
-// Helper to get network and country name by code
-function getNetworkInfo(countryCode) {
+// Helper to get country name by code
+function getCountryName(countryCode) {
     switch (countryCode) {
-        case 'KE': return { network: 'MPESA', name: 'Kenya' };
-        case 'TZ': return { network: 'AIRTELTZ', name: 'Tanzania' };
-        case 'ZM': return { network: 'MTN', name: 'Zambia' };
-        case 'UG': return { network: 'MOMO', name: 'Uganda' };
-        default: return { network: 'UNKNOWN', name: 'Unknown' };
+        case 'KE': return 'Kenya';
+        case 'TZ': return 'Tanzania';
+        case 'ZM': return 'Zambia';
+        case 'UG': return 'Uganda';
+        default: return 'Unknown';
     }
 }
 
 // 1. DEPOSIT API ENDPOINT
 app.post('/deposit', async (req, res) => {
     try {
-        const { phone_number, amount, country } = req.body;
+        const { phone_number, amount, country, network } = req.body;
         
-        if (!phone_number || !amount || !country) {
+        if (!phone_number || !amount || !country || !network) {
             return res.status(400).json({ success: false, message: 'Missing required fields' });
         }
 
-        if (amount < 10) {
-            return res.status(400).json({ success: false, message: 'Minimum deposit is 10' });
+        // Apply minimum deposits depending on country
+        let minAmount = 10;
+        if (country === 'UG') minAmount = 15000;
+        else if (country === 'TZ') minAmount = 2500;
+        else if (country === 'ZM') minAmount = 100;
+
+        if (amount < minAmount) {
+            return res.status(400).json({ success: false, message: `Minimum deposit is ${minAmount}` });
         }
 
         const reference = generateReference(country);
-        const { network, name } = getNetworkInfo(country);
+        const name = getCountryName(country);
         
         // Initialize payment state in memory
         paymentStore.set(reference, {
@@ -65,7 +71,7 @@ app.post('/deposit', async (req, res) => {
             phone_number,
             amount,
             country: name,
-            network,
+            network: network,
             date: new Date().toLocaleDateString(),
             time: new Date().toLocaleTimeString(),
             provider: 'M-Pay',
@@ -75,8 +81,23 @@ app.post('/deposit', async (req, res) => {
         const callbackUrl = `https://mpay-server-xxts.onrender.com/callback`; 
 
         let response;
-        if (country !== 'KE') {
-            // Use Global Payments API for non-Kenyan countries
+        if (country === 'KE' && network === 'MPESA') {
+            // Use M-Pesa Express for Kenya MPESA
+            response = await axios.post(`${MPAY_API_BASE}/mpesa/express`, new URLSearchParams({
+                api_key: API_KEY,
+                amount: amount.toString(),
+                phone_number: phone_number,
+                user_reference: reference,
+                payment_id: 'wallet',
+                callback_url: callbackUrl
+            }), {
+                headers: { 
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
+            });
+        } else {
+            // Use Global Payments API for non-Kenyan countries and Kenyan Airtel
             response = await axios.post('https://app.mpayafrica.site/api/global-payments', {
                 api_key: API_KEY,
                 first_name: "Customer",
@@ -94,21 +115,6 @@ app.post('/deposit', async (req, res) => {
                 headers: { 
                     'Accept': 'application/json',
                     'Content-Type': 'application/json'
-                }
-            });
-        } else {
-            // Use M-Pesa Express for Kenya
-            response = await axios.post(`${MPAY_API_BASE}/mpesa/express`, new URLSearchParams({
-                api_key: API_KEY,
-                amount: amount.toString(),
-                phone_number: phone_number,
-                user_reference: reference,
-                payment_id: 'wallet',
-                callback_url: callbackUrl
-            }), {
-                headers: { 
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/x-www-form-urlencoded'
                 }
             });
         }
