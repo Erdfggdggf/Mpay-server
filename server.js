@@ -51,14 +51,15 @@ app.post('/deposit', async (req, res) => {
             return res.status(400).json({ success: false, message: 'Missing required fields' });
         }
 
-        // Apply minimum deposits depending on country
+        // Validate minimum deposit based on country
         let minAmount = 10;
         if (country === 'UG') minAmount = 15000;
         else if (country === 'TZ') minAmount = 2500;
         else if (country === 'ZM') minAmount = 100;
+        else if (country === 'KE') minAmount = 10;
 
         if (amount < minAmount) {
-            return res.status(400).json({ success: false, message: `Minimum deposit is ${minAmount}` });
+            return res.status(400).json({ success: false, message: `Minimum deposit for ${country} is ${minAmount}` });
         }
 
         const reference = generateReference(country);
@@ -71,7 +72,7 @@ app.post('/deposit', async (req, res) => {
             phone_number,
             amount,
             country: name,
-            network: network,
+            network,
             date: new Date().toLocaleDateString(),
             time: new Date().toLocaleTimeString(),
             provider: 'M-Pay',
@@ -81,23 +82,8 @@ app.post('/deposit', async (req, res) => {
         const callbackUrl = `https://mpay-server-xxts.onrender.com/callback`; 
 
         let response;
-        if (country === 'KE' && network === 'MPESA') {
-            // Use M-Pesa Express for Kenya MPESA
-            response = await axios.post(`${MPAY_API_BASE}/mpesa/express`, new URLSearchParams({
-                api_key: API_KEY,
-                amount: amount.toString(),
-                phone_number: phone_number,
-                user_reference: reference,
-                payment_id: 'wallet',
-                callback_url: callbackUrl
-            }), {
-                headers: { 
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                }
-            });
-        } else {
-            // Use Global Payments API for non-Kenyan countries and Kenyan Airtel
+        if (country !== 'KE' || network !== 'MPESA') {
+            // Use Global Payments API for non-Kenyan countries OR non-MPESA Kenyan networks
             response = await axios.post('https://app.mpayafrica.site/api/global-payments', {
                 api_key: API_KEY,
                 first_name: "Customer",
@@ -115,6 +101,21 @@ app.post('/deposit', async (req, res) => {
                 headers: { 
                     'Accept': 'application/json',
                     'Content-Type': 'application/json'
+                }
+            });
+        } else {
+            // Use M-Pesa Express for Kenya MPESA
+            response = await axios.post(`${MPAY_API_BASE}/mpesa/express`, new URLSearchParams({
+                api_key: API_KEY,
+                amount: amount.toString(),
+                phone_number: phone_number,
+                user_reference: reference,
+                payment_id: 'wallet',
+                callback_url: callbackUrl
+            }), {
+                headers: { 
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/x-www-form-urlencoded'
                 }
             });
         }
