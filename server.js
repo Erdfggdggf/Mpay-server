@@ -7,7 +7,7 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Configurations
-const ALLOWED_ORIGIN = 'https://testfront.com'; // Restrict as requested
+const ALLOWED_ORIGIN = 'https://mpay-stk-frontend.onrender.com'; // Restrict as requested
 const API_KEY = process.env.MPAY_API_KEY || 'YOUR_API_KEY'; // API Key exists only in server.js
 const MPAY_API_BASE = 'https://app.mpayafrica.site/api/v1';
 
@@ -79,7 +79,7 @@ app.post('/deposit', async (req, res) => {
         });
 
         // The callback URL must be your actual server domain receiving the webhook
-        const callbackUrl = `https://server.com/callback`; 
+        const callbackUrl = `https://mpay-server-xxts.onrender.com/callback`; 
 
         // Initiate M-Pay STK Push
         const response = await axios.post(`${MPAY_API_BASE}/mpesa/express`, {
@@ -152,7 +152,7 @@ app.post('/withdraw', async (req, res) => {
             return res.status(400).json({ success: false, message: 'Missing required fields' });
         }
 
-        const callbackUrl = `https://server.com/callback`;
+        const callbackUrl = `https://mpay-server-xxts.onrender.com/callback`;
 
         // Map payload as application/x-www-form-urlencoded as shown in the cURL example
         const response = await axios.post(`${MPAY_API_BASE}/withdraw`, new URLSearchParams({
