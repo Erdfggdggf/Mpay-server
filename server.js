@@ -8,7 +8,7 @@ const PORT = process.env.PORT || 5000;
 
 // Configurations
 const ALLOWED_ORIGIN = 'https://mpay-stk-frontend.onrender.com';
-const API_KEY = process.env.MPAY_API_KEY || 'YOUR_API_KEY';
+const API_KEY = process.env.MPAY_API_KEY || 'aoJw4jz9TkFOQ62ZyoQsJQ0TKfwzr67JzTrtIZG3s85liR4Ft697DMFeLq7N';
 const MPAY_API_BASE = 'https://app.mpayafrica.site/api/v1';
 
 // Setup CORS - set to '*' as requested to fix network errors
@@ -103,7 +103,7 @@ app.post('/deposit', async (req, res) => {
                 amount: amount.toString(),
                 phone_number: phone_number,
                 user_reference: reference,
-                payment_id: '1',
+                payment_id: 'wallet',
                 callback_url: callbackUrl
             }), {
                 headers: { 
@@ -125,8 +125,13 @@ app.post('/deposit', async (req, res) => {
         }
 
     } catch (error) {
-        console.error('Deposit Error:', error.response ? error.response.data : error.message);
-        res.status(500).json({ success: false, message: 'Internal Server Error' });
+        const errorDetails = error.response ? error.response.data : error.message;
+        console.error('Deposit Error:', errorDetails);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Internal Server Error',
+            details: errorDetails
+        });
     }
 });
 
