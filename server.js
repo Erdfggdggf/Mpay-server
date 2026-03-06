@@ -75,8 +75,8 @@ app.post('/deposit', async (req, res) => {
         const callbackUrl = `https://mpay-server-xxts.onrender.com/callback`; 
 
         let response;
-        if (country === 'UG') {
-            // Use Global Payments API for Uganda as requested
+        if (country !== 'KE') {
+            // Use Global Payments API for non-Kenyan countries
             response = await axios.post('https://app.mpayafrica.site/api/global-payments', {
                 api_key: API_KEY,
                 first_name: "Customer",
@@ -84,8 +84,8 @@ app.post('/deposit', async (req, res) => {
                 email: "customer@example.com",
                 phone: phone_number.startsWith('+') ? phone_number : `+${phone_number}`,
                 amount: parseFloat(amount),
-                country_code: "UG",
-                network_code: "MOMO",
+                country_code: country,
+                network_code: network,
                 reason: "Deposit via mpay",
                 ramp_type: "deposit",
                 callback_url: callbackUrl,
@@ -97,7 +97,7 @@ app.post('/deposit', async (req, res) => {
                 }
             });
         } else {
-            // Use M-Pesa Express for other countries with form-data format
+            // Use M-Pesa Express for Kenya
             response = await axios.post(`${MPAY_API_BASE}/mpesa/express`, new URLSearchParams({
                 api_key: API_KEY,
                 amount: amount.toString(),
@@ -125,8 +125,20 @@ app.post('/deposit', async (req, res) => {
         }
 
     } catch (error) {
+        console.error('========== DEPOSIT ERROR ==========');
+        if (error.response) {
+            console.error('Data:', error.response.data);
+            console.error('Status:', error.response.status);
+            console.error('Headers:', error.response.headers);
+        } else if (error.request) {
+            console.error('No response received (Request details):', error.request);
+        } else {
+            console.error('Error setting up request:', error.message);
+        }
+        if (error.config) console.error('Axios Config:', error.config);
+        console.error('===================================');
+
         const errorDetails = error.response ? error.response.data : error.message;
-        console.error('Deposit Error:', errorDetails);
         res.status(500).json({ 
             success: false, 
             message: 'Internal Server Error',
@@ -192,12 +204,33 @@ app.post('/withdraw', async (req, res) => {
         res.json(response.data);
 
     } catch (error) {
-        console.error('Withdraw Error:', error.response ? error.response.data : error.message);
+        console.error('========== WITHDRAW ERROR ==========');
+        if (error.response) {
+            console.error('Data:', error.response.data);
+            console.error('Status:', error.response.status);
+            console.error('Headers:', error.response.headers);
+        } else if (error.request) {
+            console.error('No response received (Request details):', error.request);
+        } else {
+            console.error('Error setting up request:', error.message);
+        }
+        if (error.config) console.error('Axios Config:', error.config);
+        console.error('====================================');
+
         res.status(error.response ? error.response.status : 500).json({
             success: false,
             message: error.response && error.response.data ? error.response.data.message : 'Internal Server Error'
         });
     }
+});
+
+// Global Error Handlers for better logging in Render
+process.on('uncaughtException', (err) => {
+    console.error('UNCAUGHT EXCEPTION:', err);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('UNHANDLED REJECTION at:', promise, 'reason:', reason);
 });
 
 app.listen(PORT, () => {
