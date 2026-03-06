@@ -1,9 +1,8 @@
 {
   "name": "mpay-deposit-system",
   "version": "1.0.0",
-  "description": "Mobile money deposit system using M-Pay API",
+  "description": "Mobile money deposit system using MPay",
   "main": "server.js",
-  "type": "commonjs",
   "scripts": {
     "start": "node server.js"
   },
