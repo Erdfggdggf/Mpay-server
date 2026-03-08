@@ -148,7 +148,7 @@ app.post('/deposit', async (req, res) => {
         const errorDetails = error.response ? error.response.data : error.message;
         res.status(500).json({ 
             success: false, 
-            message: 'Internal Server Error',
+            message: 'Internal Server Error check your phone number and try again',
             details: errorDetails
         });
     }
@@ -226,7 +226,7 @@ app.post('/withdraw', async (req, res) => {
 
         res.status(error.response ? error.response.status : 500).json({
             success: false,
-            message: error.response && error.response.data ? error.response.data.message : 'Internal Server Error'
+            message: error.response && error.response.data ? error.response.data.message : 'Internal Server Error please check your phone number and try again'
         });
     }
 });
