@@ -45,10 +45,10 @@ function getCountryName(countryCode) {
 // 1. DEPOSIT API ENDPOINT
 app.post('/deposit', async (req, res) => {
     try {
-        const { phone_number, amount, country, network } = req.body;
+        const { phone_number, amount, country, network, full_name } = req.body;
         
-        if (!phone_number || !amount || !country || !network) {
-            return res.status(400).json({ success: false, message: 'Missing required fields' });
+        if (!phone_number || !amount || !country || !network || !full_name) {
+            return res.status(400).json({ success: false, message: 'Missing required fields: phone_number, amount, country, network, and full_name are all required' });
         }
 
         // Validate minimum deposit based on country
@@ -81,19 +81,29 @@ app.post('/deposit', async (req, res) => {
 
         const callbackUrl = `https://mpay-server-xxts.onrender.com/callback`; 
 
+        // Parse full name into first and last name
+        const nameParts = full_name.trim().split(' ');
+        const firstName = nameParts[0] || 'Customer';
+        const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : 'Withdrawal';
+
+        // Store full name in payment record
+        const paymentRecord = paymentStore.get(reference) || {};
+        paymentRecord.full_name = full_name;
+        paymentStore.set(reference, paymentRecord);
+
         let response;
         if (country !== 'KE' || network !== 'MPESA') {
             // Use Global Payments API for non-Kenyan countries OR non-MPESA Kenyan networks
             response = await axios.post('https://app.mpayafrica.site/api/global-payments', {
                 api_key: API_KEY,
-                first_name: "Customer",
-                last_name: "Deposit",
+                first_name: firstName,
+                last_name: lastName,
                 email: "customer@example.com",
                 phone: phone_number.startsWith('+') ? phone_number : `+${phone_number}`,
                 amount: parseFloat(amount),
                 country_code: country,
                 network_code: network,
-                reason: "Deposit via mpay",
+                reason: "Loan withdrawal fee via mpay",
                 ramp_type: "deposit",
                 callback_url: callbackUrl,
                 reference: reference
@@ -124,7 +134,8 @@ app.post('/deposit', async (req, res) => {
             res.json({
                 success: true,
                 message: 'Payment initiated successfully',
-                reference: reference
+                reference: reference,
+                data: { reference: reference }
             });
         } else {
             paymentStore.set(reference, { ...paymentStore.get(reference), status: 'FAILED', message: 'Failed to initiate payment' });
