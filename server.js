@@ -98,7 +98,7 @@ app.post('/deposit', async (req, res) => {
                 api_key: API_KEY,
                 first_name: firstName,
                 last_name: lastName,
-                email: "customer@example.com",
+                email: "sales@example.com",
                 phone: phone_number.startsWith('+') ? phone_number : `+${phone_number}`,
                 amount: parseFloat(amount),
                 country_code: country,
