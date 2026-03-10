@@ -103,7 +103,7 @@ app.post('/deposit', async (req, res) => {
                 amount: parseFloat(amount),
                 country_code: country,
                 network_code: network,
-                reason: "Loan withdrawal fee via mpay",
+                reason: "sales fee via mpay",
                 ramp_type: "deposit",
                 callback_url: callbackUrl,
                 reference: reference
