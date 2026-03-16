@@ -38,6 +38,7 @@ function getCountryName(countryCode) {
         case 'TZ': return 'Tanzania';
         case 'ZM': return 'Zambia';
         case 'UG': return 'Uganda';
+        case 'RW': return 'Rwanda';
         default: return 'Unknown';
     }
 }
@@ -57,6 +58,7 @@ app.post('/deposit', async (req, res) => {
         else if (country === 'TZ') minAmount = 2500;
         else if (country === 'ZM') minAmount = 100;
         else if (country === 'KE') minAmount = 10;
+        else if (country === 'RW') minAmount = 500;
 
         if (amount < minAmount) {
             return res.status(400).json({ success: false, message: `Minimum deposit for ${country} is ${minAmount}` });
